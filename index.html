@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>코사인법칙</title>
+  <!-- MathJax 라이브러리 로드 -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+    defer
+  ></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f2f2f2;
+    }
+    #container {
+      max-width: 850px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      min-height: 600px;
+      position: relative;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    .hidden {
+      display: none;
+    }
+    .quiz-section {
+      margin-top: 20px;
+    }
+    .energy-bar {
+      width: 100%;
+      height: 20px;
+      background-color: #ccc;
+      position: relative;
+      margin-bottom: 10px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .energy-bar-inner {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      background-color: #ff6868;
+      width: 100%;
+      transition: width 0.5s linear;
+    }
+    .score-panel {
+      text-align: right;
+      margin-bottom: 10px;
+    }
+    .choices {
+      margin: 20px 0;
+      color: #000; /* 모든 텍스트 검정색 */
+    }
+    .choice {
+      display: block;
+      margin: 5px 0;
+    }
+    #finalScreen {
+      text-align: center;
+    }
+    #startScreen {
+      text-align: center;
+    }
+    #nameInputSection {
+      margin-bottom: 20px;
+    }
+    #difficultySection {
+      margin-bottom: 20px;
+    }
+    #response {
+      white-space: pre-wrap;
+      text-align: left;
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #999;
+      background-color: #eee;
+    }
+    button {
+      cursor: pointer;
+      margin: 5px;
+    }
+  </style>
+</head>
+
+<body>
+<div id="container">
+  <h1>코사인법칙</h1>
+
+  <!-- 첫 화면: 이름 입력 & 난이도 선택 -->
+  <div id="startScreen">
+    <div id="nameInputSection">
+      <label for="playerName">이름을 입력하세요: </label>
+      <input type="text" id="playerName" placeholder="이름" />
+    </div>
+    <div id="difficultySection">
+      <p>난이도를 선택하세요:</p>
+      <button onclick="startGame('top')">최상 (30초부터 시작)</button>
+      <button onclick="startGame('high')">상 (40초부터 시작)</button>
+      <button onclick="startGame('mid')">중 (50초부터 시작)</button>
+      <button onclick="startGame('low')">하 (시간제한 없음)</button>
+    </div>
+  </div>
+
+  <!-- 퀴즈 진행 화면 -->
+  <div id="quizScreen" class="hidden">
+    <div class="score-panel">
+      <span id="gameTimer">전체 경과시간: 0초</span> |
+      <span id="scoreDisplay">점수: 0</span> |
+      <span id="lifeDisplay">남은 기회: 3</span>
+    </div>
+    <div class="energy-bar" id="energyBar">
+      <div class="energy-bar-inner" id="energyBarInner"></div>
+    </div>
+    <div id="questionArea" class="quiz-section"></div>
+    <div class="choices" id="choicesArea"></div>
+    <button id="submitAnswerBtn" onclick="submitAnswer()" class="hidden">
+      답 선택
+    </button>
+  </div>
+
+  <!-- 최종 화면 -->
+  <div id="finalScreen" class="hidden">
+    <h2>게임 종료</h2>
+    <p id="finalMessage"></p>
+    <p id="finalScore"></p>
+    <button onclick="sendScore()">점수 전송</button>
+    <div id="response"></div>
+  </div>
+</div>
+
+<script>
+/*
+  모든 문제에서 "정답 : (B)" 같은 문구를 제거했습니다.
+  그 외에는 문제 내용, 보기, 순서는 무작위로 그대로 유지합니다.
+  총 41개 문제.
+*/
+
+// ========== 문제 데이터 (정답 문구 제거, 41문제) ==========
+
+// (1)
+const q01 = {
+  question:
+`△ABC에서 B = 60°, a=6, c=3일 때, b의 값은?
+
+보기
+(A) 3√2
+(B) 3√3
+(C) 6
+(D) 2√3`,
+  choices: [
+    "3√2",
+    "3√3",
+    "6",
+    "2√3"
+  ],
+  correct: 1,  // (B)
+  answerDisplay: "(B)"
+};
+
+// (2)
+const q02 = {
+  question:
+`△ABC에서 a=2, c=√3, B=30°일 때, b의 값은?
+
+보기
+(A) 1
+(B) √2
+(C) 2
+(D) √3`,
+  choices: [
+    "1",
+    "√2",
+    "2",
+    "√3"
+  ],
+  correct: 0, // (A)
+  answerDisplay: "(A)"
+};
+
+// (3)
+const q03 = {
+  question:
+`△ABC에서 a=5, b=3, c=7일 때, C의 값은?
+
+보기
+(A) 60°
+(B) 90°
+(C) 120°
+(D) 135°`,
+  choices: [
+    "60°",
+    "90°",
+    "120°",
+    "135°"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (4)
+const q04 = {
+  question:
+`△ABC에서 a=4, b=5, c=6일 때, cos B의 값은?
+
+보기
+(A) 3/4
+(B) 9/16
+(C) 4/5
+(D) 1/2`,
+  choices: [
+    "3/4",
+    "9/16",
+    "4/5",
+    "1/2"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (5)
+const q05 = {
+  question:
+`△ABC에서 b=2√3, c=√3, A=60°일 때, a의 값은?
+
+보기
+(A) 2
+(B) 3
+(C) √3
+(D) 4`,
+  choices: [
+    "2",
+    "3",
+    "√3",
+    "4"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (6)
+const q06 = {
+  question:
+`△ABC에서 b=3√2, c=2, A=45°일 때, a의 값은?
+
+보기
+(A) √8
+(B) √10
+(C) 3√2
+(D) 4`,
+  choices: [
+    "√8",
+    "√10",
+    "3√2",
+    "4"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (7)
+const q07 = {
+  question:
+`△ABC에서 a=3, b=2√2, C=135°일 때, c의 값은?
+
+보기
+(A) √13
+(B) √29
+(C) √32
+(D) √37`,
+  choices: [
+    "√13",
+    "√29",
+    "√32",
+    "√37"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (8)
+const q08 = {
+  question:
+`△ABC에서 a=12, b=6, C=120°일 때, c의 값은?
+
+보기
+(A) 6√2
+(B) 6√3
+(C) 6√5
+(D) 6√7`,
+  choices: [
+    "6√2",
+    "6√3",
+    "6√5",
+    "6√7"
+  ],
+  correct: 3, // (D)
+  answerDisplay: "(D)"
+};
+
+// (9)
+const q09 = {
+  question:
+`△ABC에서 b=5, c=7, A=60°일 때, a의 값은?
+
+보기
+(A) √25
+(B) √35
+(C) √39
+(D) √45`,
+  choices: [
+    "√25",
+    "√35",
+    "√39",
+    "√45"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (10)
+const q10 = {
+  question:
+`△ABC에서 b=2√3, c=2, B=45°일 때, a의 값은?
+
+보기
+(A) √2 + √3
+(B) √2 + √10
+(C) 2 + √6
+(D) √12`,
+  choices: [
+    "√2 + √3",
+    "√2 + √10",
+    "2 + √6",
+    "√12"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (11)
+const q11 = {
+  question:
+`△ABC에서 B=120°, a=2, c=4일 때, b의 값은?
+
+보기
+(A) √12
+(B) 2√7
+(C) √16
+(D) √21`,
+  choices: [
+    "√12",
+    "2√7",
+    "√16",
+    "√21"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (15)
+const q15 = {
+  question:
+`△ABC에서 a=5, b=4, c=7일 때, cos A의 값은?
+
+보기
+(A) 1/2
+(B) 2/7
+(C) 3/5
+(D) 5/7`,
+  choices: [
+    "1/2",
+    "2/7",
+    "3/5",
+    "5/7"
+  ],
+  correct: 3, // (D)
+  answerDisplay: "(D)"
+};
+
+// (16)
+const q16 = {
+  question:
+`△ABC에서 a=8, b=7, c=13일 때, C의 값은?
+
+보기
+(A) 30°
+(B) 90°
+(C) 120°
+(D) 150°`,
+  choices: [
+    "30°",
+    "90°",
+    "120°",
+    "150°"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (17)
+const q17 = {
+  question:
+`△ABC에서 a=7, b=3, c=8일 때, A의 값은?
+
+보기
+(A) 45°
+(B) 60°
+(C) 90°
+(D) 135°`,
+  choices: [
+    "45°",
+    "60°",
+    "90°",
+    "135°"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (18)
+const q18 = {
+  question:
+`△ABC에서 a=5, b=4√2, C=135°일 때, c의 값은?
+
+보기
+(A) √95
+(B) √97
+(C) √99
+(D) √100`,
+  choices: [
+    "√95",
+    "√97",
+    "√99",
+    "√100"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (19)
+const q19 = {
+  question:
+`△ABC에서 a=8, b=7, c=5일 때, B의 값은?
+
+보기
+(A) 30°
+(B) 60°
+(C) 90°
+(D) 120°`,
+  choices: [
+    "30°",
+    "60°",
+    "90°",
+    "120°"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (20)
+const q20 = {
+  question:
+`△ABC에서 a=7, c=8, B=120°일 때, b의 값은?
+
+보기
+(A) 12
+(B) 13
+(C) 14
+(D) 15`,
+  choices: [
+    "12",
+    "13",
+    "14",
+    "15"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (21)
+const q21 = {
+  question:
+`△ABC에서 b=2√2, c=3, A=45°일 때, a의 값은?
+
+보기
+(A) √4
+(B) √5
+(C) √7
+(D) √8`,
+  choices: [
+    "√4",
+    "√5",
+    "√7",
+    "√8"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (22)
+const q22 = {
+  question:
+`△ABC에서 b=2√3, c=3√2, B=45°, C=60°일 때, a의 값은?
+
+보기
+(A) 2 + √3
+(B) 3
+(C) 3 + √3
+(D) 2 + √2`,
+  choices: [
+    "2 + √3",
+    "3",
+    "3 + √3",
+    "2 + √2"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (23)
+const q23 = {
+  question:
+`△ABC에서 a=√6, b=2, c=√3+1일 때, A의 값은?
+
+보기
+(A) 45°
+(B) 60°
+(C) 75°
+(D) 105°`,
+  choices: [
+    "45°",
+    "60°",
+    "75°",
+    "105°"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (24)
+const q24 = {
+  question:
+`△ABC에서 a=√6 + √2, b=2, B=45°일 때, A의 값은?
+
+보기
+(A) 45°
+(B) 60°
+(C) 105°
+(D) 120°`,
+  choices: [
+    "45°",
+    "60°",
+    "105°",
+    "120°"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (25)
+const q25 = {
+  question:
+`△ABC에서 A=60°, b=2, c=√3+1일 때, (a, B, C)의 값은?
+
+보기
+(A) (√5, 45°, 75°)
+(B) (√6, 60°, 60°)
+(C) (√6, 30°, 90°)
+(D) (√6, 45°, 75°)`,
+  choices: [
+    "(√5, 45°, 75°)",
+    "(√6, 60°, 60°)",
+    "(√6, 30°, 90°)",
+    "(√6, 45°, 75°)"
+  ],
+  correct: 3, // (D)
+  answerDisplay: "(D)"
+};
+
+// (26)
+const q26 = {
+  question:
+`△ABC에서 A=75°, C=60°, b=2√2일 때, (B, a, c)의 값은?
+
+보기
+(A) (45°, √2+√6, 2√3)
+(B) (45°, 2, √6)
+(C) (60°, √2+√6, 2)
+(D) (30°, √2+2, √6)`,
+  choices: [
+    "(45°, √2+√6, 2√3)",
+    "(45°, 2, √6)",
+    "(60°, √2+√6, 2)",
+    "(30°, √2+2, √6)"
+  ],
+  correct: 0, // (A)
+  answerDisplay: "(A)"
+};
+
+// (27)
+const q27 = {
+  question:
+`△ABC에서 B=45°, a=√3+1, c=√2일 때, (b, A, C)의 값은?
+
+보기
+(A) (2, 90°, 45°)
+(B) (√2, 105°, 30°)
+(C) (2, 105°, 30°)
+(D) (2, 120°, 15°)`,
+  choices: [
+    "(2, 90°, 45°)",
+    "(√2, 105°, 30°)",
+    "(2, 105°, 30°)",
+    "(2, 120°, 15°)"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (42)
+const q42 = {
+  question:
+`△ABC에서 sin A : sin B : sin C = 4 : 5 : 6일 때, cos A의 값을 구하여라.
+
+보기
+(A) 1/2
+(B) 3/4
+(C) 2/3
+(D) 5/6`,
+  choices: [
+    "1/2",
+    "3/4",
+    "2/3",
+    "5/6"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (43)
+const q43 = {
+  question:
+`△ABC에 대하여 sin A : sin B : sin C = 7 : 5 : 3일 때, cos A의 값을 구하여라.
+
+보기
+(A) -1/2
+(B) 1/2
+(C) -√3/2
+(D) 0`,
+  choices: [
+    "-1/2",
+    "1/2",
+    "-√3/2",
+    "0"
+  ],
+  correct: 0, // (A)
+  answerDisplay: "(A)"
+};
+
+// (44)
+const q44 = {
+  question:
+`△ABC에서 a : b : c = 4 : 7 : 5일 때, cos B의 값을 구하여라.
+
+보기
+(A) 2/3
+(B) 1/5
+(C) -1/5
+(D) -2/7`,
+  choices: [
+    "2/3",
+    "1/5",
+    "-1/5",
+    "-2/7"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (45)
+const q45 = {
+  question:
+`△ABC에서 a=2, b=3, c=4일 때, cos A의 값을 구하여라.
+
+보기
+(A) 5/8
+(B) 7/8
+(C) 3/4
+(D) 9/8`,
+  choices: [
+    "5/8",
+    "7/8",
+    "3/4",
+    "9/8"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (46)
+const q46 = {
+  question:
+`△ABC에서 sin A : sin B : sin C = 1 : √3 : 2일 때, cos A의 값을 구하여라.
+
+보기
+(A) 1/2
+(B) √2/2
+(C) √3/2
+(D) -√3/2`,
+  choices: [
+    "1/2",
+    "√2/2",
+    "√3/2",
+    "-√3/2"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (47)
+const q47 = {
+  question:
+`△ABC에서 a : b : c = 4 : 5 : √21일 때, C의 값을 구하여라.
+
+보기
+(A) 30°
+(B) 45°
+(C) 60°
+(D) 90°`,
+  choices: [
+    "30°",
+    "45°",
+    "60°",
+    "90°"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (50)
+const q50 = {
+  question:
+`다음 등식을 만족하는 △ABC는 어떤 삼각형인지 말하라.
+
+a = 2b cos C
+
+보기
+(A) (b = c)인 이등변삼각형
+(B) (a = b)인 이등변삼각형
+(C) (A = 90°)인 직각삼각형
+(D) 정삼각형`,
+  choices: [
+    "(b = c)인 이등변삼각형",
+    "(a = b)인 이등변삼각형",
+    "(A = 90°)인 직각삼각형",
+    "정삼각형"
+  ],
+  correct: 0, // (A)
+  answerDisplay: "(A)"
+};
+
+// (51)
+const q51 = {
+  question:
+`다음 등식을 만족하는 △ABC는 어떤 삼각형인지 말하라.
+
+sin B = 2 sin A cos C
+
+보기
+(A) (a = b)인 이등변삼각형
+(B) (a = c)인 이등변삼각형
+(C) (b = c)인 이등변삼각형
+(D) (A = 90°)인 직각삼각형`,
+  choices: [
+    "(a = b)인 이등변삼각형",
+    "(a = c)인 이등변삼각형",
+    "(b = c)인 이등변삼각형",
+    "(A = 90°)인 직각삼각형"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (52)
+const q52 = {
+  question:
+`다음 등식을 만족하는 △ABC는 어떤 삼각형인지 말하라.
+
+a cos C = c cos A
+
+보기
+(A) (a = b)인 이등변삼각형
+(B) (b = c)인 이등변삼각형
+(C) (a = c)인 이등변삼각형
+(D) (B = 90°)인 직각삼각형`,
+  choices: [
+    "(a = b)인 이등변삼각형",
+    "(b = c)인 이등변삼각형",
+    "(a = c)인 이등변삼각형",
+    "(B = 90°)인 직각삼각형"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (53)
+const q53 = {
+  question:
+`다음 등식을 만족하는 △ABC는 어떤 삼각형인지 말하라.
+
+sin A + sin B = sin C(cos A + cos B)
+
+보기
+(A) (A = 90°)인 직각삼각형
+(B) (B = 90°)인 직각삼각형
+(C) (C = 90°)인 직각삼각형
+(D) 정삼각형`,
+  choices: [
+    "(A = 90°)인 직각삼각형",
+    "(B = 90°)인 직각삼각형",
+    "(C = 90°)인 직각삼각형",
+    "정삼각형"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (54)
+const q54 = {
+  question:
+`다음 등식을 만족하는 △ABC는 어떤 삼각형인지 말하라.
+
+2 sin B × cos C + sin C = sin A + sin B
+
+보기
+(A) (a = b)인 이등변삼각형
+(B) (b = c)인 이등변삼각형
+(C) (A = 90°)인 직각삼각형
+(D) (B = 90°)인 직각삼각형`,
+  choices: [
+    "(a = b)인 이등변삼각형",
+    "(b = c)인 이등변삼각형",
+    "(A = 90°)인 직각삼각형",
+    "(B = 90°)인 직각삼각형"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (55)
+const q55 = {
+  question:
+`다음 등식을 만족하는 △ABC는 어떤 삼각형인지 말하라.
+
+sin C = 2 cos A sin B
+
+보기
+(A) (a = b)인 이등변삼각형
+(B) (b = c)인 이등변삼각형
+(C) (A = 90°)인 직각삼각형
+(D) 정삼각형`,
+  choices: [
+    "(a = b)인 이등변삼각형",
+    "(b = c)인 이등변삼각형",
+    "(A = 90°)인 직각삼각형",
+    "정삼각형"
+  ],
+  correct: 0, // (A)
+  answerDisplay: "(A)"
+};
+
+// (56)
+const q56 = {
+  question:
+`다음 등식을 만족하는 △ABC는 어떤 삼각형인지 말하라.
+
+a cos B - b cos A = c
+
+보기
+(A) (B = 90°)인 직각삼각형
+(B) (A = 90°)인 직각삼각형
+(C) (b = c)인 이등변삼각형
+(D) (a = b)인 이등변삼각형`,
+  choices: [
+    "(B = 90°)인 직각삼각형",
+    "(A = 90°)인 직각삼각형",
+    "(b = c)인 이등변삼각형",
+    "(a = b)인 이등변삼각형"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (57)
+const q57 = {
+  question:
+`다음 등식을 만족하는 △ABC는 어떤 삼각형인지 말하라.
+
+a cos B = b cos A
+
+보기
+(A) (a = b)인 이등변삼각형
+(B) (b = c)인 이등변삼각형
+(C) (C = 90°)인 직각삼각형
+(D) 정삼각형`,
+  choices: [
+    "(a = b)인 이등변삼각형",
+    "(b = c)인 이등변삼각형",
+    "(C = 90°)인 직각삼각형",
+    "정삼각형"
+  ],
+  correct: 0, // (A)
+  answerDisplay: "(A)"
+};
+
+// (58)
+const q58 = {
+  question:
+`다음 등식을 만족하는 △ABC는 어떤 삼각형인지 말하라.
+
+cos B : cos C = b : c
+
+보기
+(A) (a = b)인 이등변삼각형
+(B) (b = c)인 이등변삼각형
+(C) (A = 90°)인 직각삼각형
+(D) 정삼각형`,
+  choices: [
+    "(a = b)인 이등변삼각형",
+    "(b = c)인 이등변삼각형",
+    "(A = 90°)인 직각삼각형",
+    "정삼각형"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// (59)
+const q59 = {
+  question:
+`다음 등식을 만족하는 △ABC는 어떤 삼각형인지 말하라.
+
+sin A cos A = sin B cos B
+
+보기
+(A) (A = 90°)인 직각삼각형
+(B) (b = c)인 이등변삼각형
+(C) (a = b)인 이등변삼각형 또는 (C = 90°)인 직각삼각형
+(D) 정삼각형`,
+  choices: [
+    "(A = 90°)인 직각삼각형",
+    "(b = c)인 이등변삼각형",
+    "(a = b)인 이등변삼각형 또는 (C = 90°)인 직각삼각형",
+    "정삼각형"
+  ],
+  correct: 2, // (C)
+  answerDisplay: "(C)"
+};
+
+// (60)
+const q60 = {
+  question:
+`다음 등식을 만족하는 △ABC는 어떤 삼각형인지 말하라.
+
+sin B cos C = sin C cos B
+
+보기
+(A) (a = b)인 이등변삼각형
+(B) (b = c)인 이등변삼각형
+(C) (A = 90°)인 직각삼각형
+(D) (C = 90°)인 직각삼각형`,
+  choices: [
+    "(a = b)인 이등변삼각형",
+    "(b = c)인 이등변삼각형",
+    "(A = 90°)인 직각삼각형",
+    "(C = 90°)인 직각삼각형"
+  ],
+  correct: 1, // (B)
+  answerDisplay: "(B)"
+};
+
+// 모든 문제 배열
+const fullQuestions = [
+  q01, q02, q03, q04, q05, q06, q07, q08, q09, q10,
+  q11, q15, q16, q17, q18, q19, q20, q21, q22, q23,
+  q24, q25, q26, q27, q42, q43, q44, q45, q46, q47,
+  q50, q51, q52, q53, q54, q55, q56, q57, q58, q59,
+  q60
+]; // 총 41문제
+
+// ========== 상태 변수 ==========
+let shuffledQuestions = [];
+let currentQuestionIndex = 0;
+let score = 0;
+let life = 3;
+let totalElapsedTime = 0;
+let intervalId = null;
+let energyIntervalId = null;
+let energyTime = 0;
+let initialEnergyTime = 0;
+let difficulty = "low";
+let nameStr = "";
+
+// 난이도별 점수
+const difficultyScores = {
+  top: 20,
+  high: 15,
+  mid: 13,
+  low: 10
+};
+
+// 난이도별 제한시간(초)
+const difficultyTimes = {
+  top: 30,
+  high: 40,
+  mid: 50,
+  low: 999999999
+};
+
+// 배열 섞기
+function shuffleArray(arr){
+  for(let i=arr.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+// 게임 시작
+function startGame(diff){
+  difficulty = diff;
+  nameStr = document.getElementById("playerName").value.trim();
+  if(!nameStr){
+    alert("이름을 입력하세요!");
+    return;
+  }
+  document.getElementById("startScreen").classList.add("hidden");
+  document.getElementById("quizScreen").classList.remove("hidden");
+
+  intervalId = setInterval(()=>{
+    totalElapsedTime++;
+    document.getElementById("gameTimer").innerText =
+      "전체 경과시간: " + totalElapsedTime + "초";
+  },1000);
+
+  shuffledQuestions = [...fullQuestions];
+  shuffleArray(shuffledQuestions);
+
+  score = 0;
+  life = 3;
+  currentQuestionIndex = 0;
+  document.getElementById("scoreDisplay").innerText = "점수: 0";
+  document.getElementById("lifeDisplay").innerText = "남은 기회: 3";
+  initialEnergyTime = difficultyTimes[diff];
+
+  startNewQuestion();
+}
+
+// 새문제
+function startNewQuestion(){
+  if(currentQuestionIndex >= shuffledQuestions.length){
+    endGame("모든 문제를 풀었습니다!");
+    return;
+  }
+
+  energyTime = initialEnergyTime;
+  updateEnergyBar();
+
+  if(energyIntervalId) clearInterval(energyIntervalId);
+  if(difficulty !== "low"){
+    energyIntervalId = setInterval(()=>{
+      energyTime--;
+      updateEnergyBar();
+      if(energyTime<=0){
+        clearInterval(energyIntervalId);
+        life--;
+        if(life<=0){
+          endGame("시간 초과! (기회 소진)");
+          return;
+        }
+        document.getElementById("lifeDisplay").innerText =
+          "남은 기회: " + life;
+        currentQuestionIndex++;
+        startNewQuestion();
+      }
+    },1000);
+  } else {
+    // 무제한
+    document.getElementById("energyBarInner").style.width = "100%";
+  }
+
+  const qData = shuffledQuestions[currentQuestionIndex];
+  document.getElementById("questionArea").innerText = qData.question;
+
+  let htmlStr = "";
+  for(let i=0; i<qData.choices.length; i++){
+    htmlStr += `
+      <label class="choice">
+        <input type="radio" name="choice" value="${i}">
+        ${qData.choices[i]}
+      </label>
+    `;
+  }
+  document.getElementById("choicesArea").innerHTML = htmlStr;
+  document.getElementById("submitAnswerBtn").classList.remove("hidden");
+}
+
+// 에너지바 업데이트
+function updateEnergyBar(){
+  if(difficulty==="low"){
+    document.getElementById("energyBarInner").style.width = "100%";
+    return;
+  }
+  const ratio = energyTime/initialEnergyTime;
+  const w = Math.max(0,Math.min(1,ratio))*100;
+  document.getElementById("energyBarInner").style.width = w + "%";
+}
+
+// 정답 제출
+function submitAnswer(){
+  const qData = shuffledQuestions[currentQuestionIndex];
+  const rads = document.getElementsByName("choice");
+  let selected = -1;
+  for(let r of rads){
+    if(r.checked){
+      selected = parseInt(r.value,10);
+      break;
+    }
+  }
+  if(selected<0){
+    alert("답을 선택하세요!");
+    return;
+  }
+
+  if(selected === qData.correct){
+    // 정답
+    score += difficultyScores[difficulty];
+    document.getElementById("scoreDisplay").innerText = "점수: " + score;
+  } else {
+    // 오답
+    alert("틀렸습니다! 정답은 " + qData.answerDisplay + " 입니다.");
+    life--;
+    if(life<=0){
+      endGame("오답! (기회 소진)");
+      return;
+    }
+    document.getElementById("lifeDisplay").innerText = "남은 기회: " + life;
+  }
+  clearInterval(energyIntervalId);
+  currentQuestionIndex++;
+  startNewQuestion();
+}
+
+// 게임 종료
+function endGame(msg){
+  clearInterval(intervalId);
+  clearInterval(energyIntervalId);
+  document.getElementById("quizScreen").classList.add("hidden");
+  document.getElementById("finalScreen").classList.remove("hidden");
+  document.getElementById("finalMessage").innerText = msg;
+  document.getElementById("finalScore").innerText = "최종 점수: " + score;
+}
+
+// 점수 전송
+function sendScore(){
+  saveData("코사인법칙", nameStr, score, totalElapsedTime);
+}
+
+// 서버로 전송
+async function saveData(game, name, score, elapsedTime){
+  const FUNCTION_URL = "https://us-central1-record-f420d.cloudfunctions.net/report";
+  const requestData = {
+    game,
+    name,
+    score: parseInt(score,10),
+    elapsedTime: parseInt(elapsedTime,10)
+  };
+  try{
+    const response = await fetch(FUNCTION_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(requestData)
+    });
+    const responseData = await response.json();
+    if(response.ok){
+      document.getElementById("response").innerText =
+        `성공: ${JSON.stringify(responseData,null,2)}`;
+    } else {
+      document.getElementById("response").innerText =
+        `오류: ${JSON.stringify(responseData,null,2)}`;
+    }
+  } catch(error){
+    console.error('요청 실패:',error);
+    document.getElementById("response").innerText =
+      `네트워크 오류: ${error.message}`;
+  }
+}
+</script>
+</body>
+</html>
